@@ -11,6 +11,9 @@ class Budget extends StatefulWidget {
 
 class _BudgetState extends State<Budget> {
   List<Map<String, dynamic>> _savedLists = [];
+  String? _highestListName;
+  String? _lowestListName;
+  bool _showHighLowLabels = false;
 
   @override
   void initState() {
@@ -20,12 +23,27 @@ class _BudgetState extends State<Budget> {
 
   void _loadSavedLists() async {
     final lists = await FirebaseService().fetchGroceryLists();
+    bool atLeastOneHasPrice = false;
     for (var list in lists) {
       list['totalCost'] = await _sortListByCost(list['listName']);
+      if ((list['totalCost'] ?? 0.0) > 0.0) {
+        atLeastOneHasPrice = true;
+      }
     }
+    // Sort lists by totalCost descending
     lists.sort((a, b) => b['totalCost'].compareTo(a['totalCost']));
+    // Determine highest and lowest only if at least one list has price
+    String? highest;
+    String? lowest;
+    if (lists.isNotEmpty && atLeastOneHasPrice) {
+      highest = lists.first['listName'];
+      lowest = lists.last['listName'];
+    }
     setState(() {
       _savedLists = lists;
+      _highestListName = highest;
+      _lowestListName = lowest;
+      _showHighLowLabels = atLeastOneHasPrice;
     });
   }
 
@@ -110,7 +128,9 @@ class _BudgetState extends State<Budget> {
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              if (index == 0)
+                              if (_savedLists.length > 1 &&
+                                  _showHighLowLabels &&
+                                  savedList['listName'] == _highestListName)
                                 Text(
                                   'Highest',
                                   style: TextStyle(
@@ -119,7 +139,9 @@ class _BudgetState extends State<Budget> {
                                     color: Colors.red,
                                   ),
                                 ),
-                              if (index == _savedLists.length - 1)
+                              if (_savedLists.length > 1 &&
+                                  _showHighLowLabels &&
+                                  savedList['listName'] == _lowestListName)
                                 Text(
                                   'Lowest',
                                   style: TextStyle(
@@ -153,8 +175,8 @@ class _BudgetState extends State<Budget> {
                               style: ElevatedButton.styleFrom(
                                 padding: EdgeInsets.symmetric(
                                     horizontal: 100, vertical: 15),
-                                primary:
-                                    Color.fromARGB(255, 30, 130, 139), // Change button color to blue
+                                primary: Color.fromARGB(255, 30, 130,
+                                    139), // Change button color to blue
                               ),
                             ),
                           ),
